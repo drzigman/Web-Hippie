@@ -85,6 +85,7 @@ sub call {
     }
 }
 
+use Scalar::Util;
 sub get_listener {
     my ($self, $env) = @_;
     my $client_id = $env->{'hippie.client_id'} ||= rand(1);
@@ -92,10 +93,12 @@ sub get_listener {
 
     my $new = !$sub || $sub->destroyed;
     unless ($new) {
-        return $env->{'hippie.listener'} = $sub;
+        Scalar::Util::weaken($env->{'hippie.listener'} = $sub);
+        return $sub;
     }
 
     $sub = $self->client_mgr->{$client_id} = $self->bus->new_listener();
+    Scalar::Util::weaken($env->{'hippie.listener'} = $sub);
 
     $sub->timeout(15)
         if $env->{'hippie.handle'} and
@@ -105,7 +108,6 @@ sub get_listener {
                            $self->app->($env);
                            delete $self->client_mgr->{$client_id};
                        });
-    $env->{'hippie.listener'} = $sub;
     # XXX the recycling should be done in anymq
     $env->{PATH_INFO} = '/new_listener';
     $self->app->($env);
