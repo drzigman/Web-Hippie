@@ -91,26 +91,27 @@ sub get_listener {
     my $sub = $self->client_mgr->{$client_id};
 
     my $new = !$sub || $sub->destroyed;
-    if ($new) {
-        $sub = $self->client_mgr->{$client_id} = $self->bus->new_listener();
-        $sub->timeout(15)
-            if $env->{'hippie.handle'} and
-                $env->{'hippie.handle'}->isa('Web::Hippie::Handle::WebSocket');
-        $sub->on_timeout(sub { $_[0]->destroyed(1);
-                               $env->{PATH_INFO} = '/error';
-                               $self->app->($env);
-                               delete $self->client_mgr->{$client_id};
-                           });
-        $env->{'hippie.listener'} = $sub;
-        # XXX the recycling should be done in anymq
-        $env->{PATH_INFO} = '/new_listener';
-        $self->app->($env);
-        $sub->append({ type => 'hippie.pipe.set_client_id',
-                       client_id => $client_id} );
+    unless ($new) {
+        return $env->{'hippie.listener'} = $sub;
     }
 
-    # XXX: callback to verify we have access to this listener.
+    $sub = $self->client_mgr->{$client_id} = $self->bus->new_listener();
+
+    $sub->timeout(15)
+        if $env->{'hippie.handle'} and
+            $env->{'hippie.handle'}->isa('Web::Hippie::Handle::WebSocket');
+    $sub->on_timeout(sub { $_[0]->destroyed(1);
+                           $env->{PATH_INFO} = '/error';
+                           $self->app->($env);
+                           delete $self->client_mgr->{$client_id};
+                       });
     $env->{'hippie.listener'} = $sub;
+    # XXX the recycling should be done in anymq
+    $env->{PATH_INFO} = '/new_listener';
+    $self->app->($env);
+    $sub->append({ type => 'hippie.pipe.set_client_id',
+                   client_id => $client_id} );
+
     return $sub;
 
 }
