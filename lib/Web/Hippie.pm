@@ -133,12 +133,23 @@ sub handler_ws {
     return sub {
         my $responder = shift;
 
+        my $cleanup = $self->connection_cleanup($env, $handler, $h);
         $h->push_write($hs->to_string);
         $h->on_read(sub {
                         shift->push_read(
                             sub {
                                 $frame->append($_[0]->rbuf);
                                 while (my $message = $frame->next_bytes) {
+                                    if ($frame->is_close) {
+                                        # Send close frame back
+                                        $h->push_write(
+                                            Protocol::WebSocket::Frame->new(
+                                                type    => 'close',
+                                                version => $version
+                                            )->to_bytes
+                                        );
+                                        return $cleanup->();
+                                    }
                                     $env->{'hippie.message'} = eval { JSON::decode_json($message) };
                                     if ($@) {
                                         warn $@;
@@ -154,7 +165,7 @@ sub handler_ws {
         $env->{'hippie.handle'} = Web::Hippie::Handle::WebSocket->new
             ({ version => $version,
                h  => $h });
-        $h->on_error( $self->connection_cleanup($env, $handler, $h) );
+        $h->on_error( $cleanup );
 
         $env->{'PATH_INFO'} = '/init';
         $handler->($env);
