@@ -153,7 +153,7 @@ sub handler_ws {
                                     $env->{'hippie.message'} = eval { JSON::decode_json($message) };
                                     if ($@) {
                                         warn $@;
-                                        return $h->on_error();
+                                        return;
                                     }
 
                                     $env->{'PATH_INFO'} = '/message';
