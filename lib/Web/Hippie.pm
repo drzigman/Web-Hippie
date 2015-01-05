@@ -35,7 +35,7 @@ use Encode;
 
 sub handler_pub {
     my ($self, $env, $handler) = @_;
-    
+
     my $req = Plack::Request->new($env);
 
     # get message

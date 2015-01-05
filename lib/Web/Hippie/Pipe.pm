@@ -12,6 +12,7 @@ use Plack::Request;
 use Plack::Response;
 use AnyMQ;
 use Web::Hippie;
+use Data::UUID;
 
 sub prepare_app {
     my $self = shift;
@@ -34,7 +35,7 @@ sub call {
             my $req = Plack::Request->new($env);
             my $uri = $req->uri;
             $uri->path( $uri->path . '/' . $args );
-            $uri->query_form(client_id => rand(1));
+            $uri->query_form( client_id => Data::UUID->new->create_str() );
             $res->redirect($uri);
             return $res->finalize;
         }
@@ -88,7 +89,7 @@ sub call {
 use Scalar::Util;
 sub get_listener {
     my ($self, $env) = @_;
-    my $client_id = $env->{'hippie.client_id'} ||= rand(1);
+    my $client_id = $env->{'hippie.client_id'} ||= Data::UUID->new->create_str();
     my $sub = $self->client_mgr->{$client_id};
 
     my $new = !$sub || $sub->destroyed;
